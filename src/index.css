@@ -212,9 +212,15 @@
 }
 
 /* Hide Bolt.new floating preview branding banner if injected */
-[class*="bolt" i],
-[id*="bolt" i],
-[class*="branding" i],
+[class*="bolt"],
+[class*="Bolt"],
+[class*="BOLT"],
+[id*="bolt"],
+[id*="Bolt"],
+[id*="BOLT"],
+[class*="branding"],
+[class*="Branding"],
+[class*="BRANDING"],
 .bolt-branding,
 #bolt-branding,
 div[class*="bolt-"] {
