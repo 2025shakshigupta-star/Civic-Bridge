@@ -348,4 +348,8 @@ export default function AIScreen({ issues, onBack, onNavigate }: AIScreenProps) 
       </div>
     </div>
   );
+  if (!GEMINI_API_KEY) {
+  throw new Error("Gemini API key not configured");
+  }
+}
 }
