@@ -210,3 +210,17 @@
   .collapsible-enter { transition: none; }
   .collapsible-enter.open { max-height: 300px; opacity: 1; }
 }
+
+/* Hide Bolt.new floating preview branding banner if injected */
+[class*="bolt" i],
+[id*="bolt" i],
+[class*="branding" i],
+.bolt-branding,
+#bolt-branding,
+div[class*="bolt-"] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+

@@ -25,6 +25,7 @@ export interface Issue {
   mapY: number;
   status: 'Open' | 'In Progress' | 'Resolved';
   reportedAt: string;
+  photo?: string;
 }
 
 export const ISSUES: Issue[] = [
@@ -232,19 +233,42 @@ function MapSVG({ issues, onPinTap }: { issues: Issue[]; onPinTap: (id: string) 
         const color = severityColor(issue.severity);
         return (
           <g key={issue.id} onClick={() => onPinTap(issue.id)} style={{ cursor: 'pointer' }}>
-            <circle cx={issue.mapX} cy={issue.mapY} r="14" fill={color} opacity="0.25">
-              <animate attributeName="r" values="10;18;10" dur="2s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="0.4;0;0.4" dur="2s" repeatCount="indefinite" />
+            <circle cx={issue.mapX} cy={issue.mapY} r="16" fill={color} opacity="0.2">
+              <animate attributeName="r" values="12;22;12" dur="2.4s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.3;0;0.3" dur="2.4s" repeatCount="indefinite" />
             </circle>
-            <path
-              d={`M${issue.mapX},${issue.mapY - 18} 
-                  C${issue.mapX - 10},${issue.mapY - 18} ${issue.mapX - 10},${issue.mapY - 6} ${issue.mapX},${issue.mapY + 6}
-                  C${issue.mapX + 10},${issue.mapY - 6} ${issue.mapX + 10},${issue.mapY - 18} ${issue.mapX},${issue.mapY - 18}Z`}
-              fill={color}
-              stroke="white"
-              strokeWidth="1.5"
-            />
-            <circle cx={issue.mapX} cy={issue.mapY - 14} r="4" fill="white" />
+            {issue.photo ? (
+              <g>
+                <path d={`M ${issue.mapX} ${issue.mapY} L ${issue.mapX - 4} ${issue.mapY - 12} L ${issue.mapX + 4} ${issue.mapY - 12} Z`} fill={color} />
+                <rect x={issue.mapX - 22} y={issue.mapY - 44} width="44" height="34" rx="4" fill="white" stroke={color} strokeWidth="2" filter="drop-shadow(0px 2px 4px rgba(0,0,0,0.15))" />
+                <defs>
+                  <clipPath id={`clip-${issue.id}`}>
+                    <rect x={issue.mapX - 20} y={issue.mapY - 42} width="40" height="30" rx="2" />
+                  </clipPath>
+                </defs>
+                <image
+                  href={issue.photo}
+                  x={issue.mapX - 20}
+                  y={issue.mapY - 42}
+                  width="40"
+                  height="30"
+                  clipPath={`url(#clip-${issue.id})`}
+                  preserveAspectRatio="xMidYMid slice"
+                />
+              </g>
+            ) : (
+              <g>
+                <path
+                  d={`M${issue.mapX},${issue.mapY - 18} 
+                      C${issue.mapX - 10},${issue.mapY - 18} ${issue.mapX - 10},${issue.mapY - 6} ${issue.mapX},${issue.mapY + 6}
+                      C${issue.mapX + 10},${issue.mapY - 6} ${issue.mapX + 10},${issue.mapY - 18} ${issue.mapX},${issue.mapY - 18}Z`}
+                  fill={color}
+                  stroke="white"
+                  strokeWidth="1.5"
+                />
+                <circle cx={issue.mapX} cy={issue.mapY - 14} r="4" fill="white" />
+              </g>
+            )}
           </g>
         );
       })}
@@ -265,6 +289,7 @@ function MapSVG({ issues, onPinTap }: { issues: Issue[]; onPinTap: (id: string) 
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 interface HomeScreenProps {
+  issues: Issue[];
   onNavigate: (screen: string, issueId?: string) => void;
   onTabChange: (tab: string) => void;
   activeTab: string;
@@ -272,7 +297,7 @@ interface HomeScreenProps {
   onUpvote: (id: string) => void;
 }
 
-export default function HomeScreen({ onNavigate, onTabChange, activeTab, upvoted, onUpvote }: HomeScreenProps) {
+export default function HomeScreen({ issues, onNavigate, onTabChange, activeTab, upvoted, onUpvote }: HomeScreenProps) {
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   const [bottomSheetExpanded, setBottomSheetExpanded] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -296,7 +321,7 @@ export default function HomeScreen({ onNavigate, onTabChange, activeTab, upvoted
     if (delta < -60) setBottomSheetExpanded(false);
   };
 
-  const selectedIssue = ISSUES.find((i) => i.id === selectedIssueId);
+  const selectedIssue = issues.find((i) => i.id === selectedIssueId);
 
   return (
     <div className="w-full h-full flex flex-col bg-cb-cream">
@@ -325,12 +350,12 @@ export default function HomeScreen({ onNavigate, onTabChange, activeTab, upvoted
           </div>
           <span className="text-white/90 text-[13px] font-medium">Andheri West, Mumbai</span>
         </div>
-        <span className="text-cb-amber text-[12px] font-semibold">{ISSUES.length} issues nearby</span>
+        <span className="text-cb-amber text-[12px] font-semibold">{issues.length} issues nearby</span>
       </div>
 
       {/* Map Section */}
       <div className="relative h-[45%] bg-white">
-        <MapSVG issues={ISSUES} onPinTap={handlePinTap} />
+        <MapSVG issues={issues} onPinTap={handlePinTap} />
       </div>
 
       {/* Bottom Sheet */}
@@ -388,7 +413,7 @@ export default function HomeScreen({ onNavigate, onTabChange, activeTab, upvoted
 
         {/* Scrollable list */}
         <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
-          {ISSUES.map((issue, idx) => (
+          {issues.map((issue, idx) => (
             <div
               key={issue.id}
               onClick={() => handleCardTap(issue.id)}

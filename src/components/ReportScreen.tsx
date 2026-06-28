@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { ArrowLeft, Camera, MapPin, ArrowRight } from 'lucide-react';
+import { type Issue } from './HomeScreen';
 
 const ISSUE_TYPES = [
   { id: 'pothole', label: 'Pothole / Road damage', icon: '🕳️' },
@@ -15,9 +16,10 @@ const SEVERITY_OPTIONS = ['Minor', 'Moderate', 'Severe', 'Critical'] as const;
 interface ReportScreenProps {
   onClose: () => void;
   onNavigate: (screen: string, issueId?: string) => void;
+  onAddIssue: (issue: Issue) => void;
 }
 
-export default function ReportScreen({ onClose, onNavigate }: ReportScreenProps) {
+export default function ReportScreen({ onClose, onNavigate, onAddIssue }: ReportScreenProps) {
   const [step, setStep] = useState(1);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [description, setDescription] = useState('');
@@ -26,6 +28,7 @@ export default function ReportScreen({ onClose, onNavigate }: ReportScreenProps)
   const [severity, setSeverity] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [ticketNumber] = useState(() => `CB-2026-${String(Math.floor(Math.random() * 9000) + 1000).slice(-4)}`);
+  const [newId, setNewId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,11 +41,100 @@ export default function ReportScreen({ onClose, onNavigate }: ReportScreenProps)
   };
 
   const handleSubmit = () => {
+    const dbSeverity: Issue['severity'] =
+      severity === 'Critical' ? 'Critical' :
+      severity === 'Severe' ? 'High' :
+      severity === 'Moderate' ? 'Medium' :
+      'Low';
+
+    const iconType: Issue['icon'] =
+      selectedType === 'pothole' ? 'road' :
+      selectedType === 'streetlight' ? 'light' :
+      selectedType === 'flooding' ? 'water' :
+      selectedType === 'garbage' ? 'waste' :
+      selectedType === 'barrier' ? 'barrier' :
+      'road';
+
+    const dept =
+      selectedType === 'pothole' ? 'BMC Roads Department' :
+      selectedType === 'streetlight' ? 'BMC Electrical Department' :
+      selectedType === 'flooding' ? 'BMC Storm Water Drains' :
+      selectedType === 'garbage' ? 'BMC Solid Waste Management' :
+      selectedType === 'barrier' ? 'BMC Traffic Department' :
+      'BMC Ward Officer';
+
+    const aiText =
+      selectedType === 'pothole' ? 'Community report of road hazard' :
+      selectedType === 'streetlight' ? 'Safety concern on dark street segment' :
+      selectedType === 'flooding' ? 'Flooding hazard blocking transit' :
+      selectedType === 'garbage' ? 'Sanitation concern at transit point' :
+      selectedType === 'barrier' ? 'Damaged traffic barrier reported' :
+      'Community reported civic issue';
+
+    const pScore =
+      severity === 'Critical' ? 90 + Math.floor(Math.random() * 10) :
+      severity === 'Severe' ? 75 + Math.floor(Math.random() * 15) :
+      severity === 'Moderate' ? 50 + Math.floor(Math.random() * 25) :
+      25 + Math.floor(Math.random() * 25);
+
+    // Map location string to coordinate
+    const locLower = location.toLowerCase();
+    let mapX = 140 + Math.floor(Math.random() * 140);
+    let mapY = 70 + Math.floor(Math.random() * 140);
+    if (locLower.includes('lokhandwala')) {
+      mapX = 120;
+      mapY = 160;
+    } else if (locLower.includes('andheri west') || locLower.includes('sv road')) {
+      mapX = 180;
+      mapY = 100;
+    } else if (locLower.includes('andheri')) {
+      mapX = 260;
+      mapY = 60;
+    } else if (locLower.includes('oshiwara')) {
+      mapX = 80;
+      mapY = 220;
+    } else if (locLower.includes('versova')) {
+      mapX = 320;
+      mapY = 180;
+    } else if (locLower.includes('goregaon')) {
+      mapX = 340;
+      mapY = 40;
+    }
+
+    const newIssueId = `new-${Date.now()}`;
+    const newIssue: Issue = {
+      id: newIssueId,
+      title: `${ISSUE_TYPES.find((t) => t.id === selectedType)?.label || 'Issue'}: ${location}`,
+      location,
+      distance: '0.1 km away',
+      severity: dbSeverity,
+      complaints: 1,
+      days: 1,
+      upvotes: 0,
+      description: description,
+      icon: iconType,
+      department: dept,
+      aiReason: aiText,
+      priorityScore: pScore,
+      tags: ['newly-reported', selectedType || 'general'],
+      mapX,
+      mapY,
+      status: 'Open',
+      reportedAt: new Date().toISOString().split('T')[0],
+      photo: photo || undefined // store the base64 photo
+    };
+
+    onAddIssue(newIssue);
+    setNewId(newIssueId);
     setSubmitted(true);
   };
 
   const handleTrack = () => {
-    onNavigate('issueDetail', '3');
+    if (newId) {
+      onNavigate('issueDetail', newId);
+    } else {
+      onNavigate('issueDetail', '3');
+    }
   };
 
   const handleReportAnother = () => {

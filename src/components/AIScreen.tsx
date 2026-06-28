@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, Sparkles, ChevronDown, ChevronUp, Send, Bot, User, AlertCircle } from 'lucide-react';
-import { ISSUES } from './HomeScreen';
+import { type Issue } from './HomeScreen';
 
 interface AIScreenProps {
+  issues: Issue[];
   onBack: () => void;
   onNavigate: (screen: string, issueId?: string) => void;
 }
-
-const rankedIssues = [...ISSUES].sort((a, b) => b.priorityScore - a.priorityScore);
 
 const rankBadge = (rank: number) => {
   if (rank === 1) return 'bg-cb-primary text-white';
@@ -46,8 +45,12 @@ const QUICK_CHIPS = [
   'Which issues affect school routes?',
 ];
 
-const callGeminiAI = async (userMessage: string) => {
-  const GEMINI_API_KEY = "AIzaSyD0dbPyq74tDPTQ1ky-xK8hTla6OBhLiLA";
+const callGeminiAI = async (userMessage: string, issues: Issue[]) => {
+  const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyD0dbPyq74tDPTQ1ky-xK8hTla6OBhLiLA";
+
+  const issuesContext = issues.map((issue, idx) => 
+    `${idx + 1}. ${issue.title} — ${issue.complaints} complaints, ${issue.days} days, ${issue.severity}`
+  ).join('\n');
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -57,18 +60,14 @@ const callGeminiAI = async (userMessage: string) => {
       body: JSON.stringify({
         contents: [
           {
+            role: "user",
             parts: [
               {
                 text: `You are the AI assistant for CivicBridge,
                 a civic road issue reporting app in Mumbai India.
 
                 Current issues data:
-                1. Deep pothole SV Road — 87 complaints, 12 days, Critical
-                2. Streetlights out Andheri flyover — 43 complaints, 8 days, High
-                3. Waterlogging Lokhandwala — 121 complaints, 3 days, Critical
-                4. Road cracking Oshiwara — 29 complaints, 20 days, Medium
-                5. Garbage JP Road — 15 complaints, 5 days, Low
-                6. Missing divider WEH — 56 complaints, 7 days, High
+                ${issuesContext}
 
                 User asked: ${userMessage}
 
@@ -80,22 +79,40 @@ const callGeminiAI = async (userMessage: string) => {
       })
     }
   );
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    console.error("Gemini API Request Failed:", {
+      status: response.status,
+      statusText: response.statusText,
+      error: errorBody.error || errorBody,
+    });
+    throw new Error(
+      `Gemini API Error (Status ${response.status}): ${
+        errorBody.error?.message || "Unknown error"
+      }`
+    );
+  }
+
   const data = await response.json();
 
-  if (data.candidates && data.candidates[0]) {
+  if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
     return data.candidates[0].content.parts[0].text;
   } else {
-    return "Could not get response. Please try again.";
+    console.error("Gemini API Response Format Error. Decoded response:", data);
+    throw new Error("Invalid response format from Gemini API");
   }
 };
 
-export default function AIScreen({ onBack, onNavigate }: AIScreenProps) {
+export default function AIScreen({ issues, onBack, onNavigate }: AIScreenProps) {
   const [showFormula, setShowFormula] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const rankedIssues = [...issues].sort((a, b) => b.priorityScore - a.priorityScore);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -113,14 +130,15 @@ export default function AIScreen({ onBack, onNavigate }: AIScreenProps) {
     setApiError(false);
 
     try {
-      const aiText = await callGeminiAI(userMsg);
+      const aiText = await callGeminiAI(userMsg, issues);
       setMessages((m) => [...m, { role: 'ai', text: aiText }]);
-    } catch {
+    } catch (err: any) {
+      console.error("AI Assistant Error caught in sendMessage flow:", err);
       setMessages((m) => [
         ...m,
         {
           role: 'ai',
-          text: 'AI service is temporarily unavailable. Please check your API key and try again.',
+          text: `AI service is temporarily unavailable. Error: ${err.message || 'Unknown error'}. Please try again later.`,
           error: true,
         },
       ]);

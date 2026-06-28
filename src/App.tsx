@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import HeroScreen from './components/HeroScreen';
 import AuthScreen from './components/AuthScreen';
-import HomeScreen from './components/HomeScreen';
+import HomeScreen, { type Issue, ISSUES } from './components/HomeScreen';
 import IssueDetailScreen from './components/IssueDetailScreen';
 import ReportScreen from './components/ReportScreen';
 import AIScreen from './components/AIScreen';
@@ -21,7 +21,27 @@ export default function App() {
   const [screenAnim, setScreenAnim] = useState('screen-fade-in');
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load persisted state
+  const [issues, setIssues] = useState<Issue[]>(() => {
+    try {
+      const saved = localStorage.getItem('cb_issues');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch { /* ignore */ }
+    return ISSUES;
+  });
+
+  // Persist issues changes
+  useEffect(() => {
+    localStorage.setItem('cb_issues', JSON.stringify(issues));
+  }, [issues]);
+
+  const handleAddIssue = useCallback((newIssue: Issue) => {
+    setIssues((prev) => [newIssue, ...prev]);
+  }, []);
+
+  // Load persisted state & check query parameters for shared links
   useEffect(() => {
     try {
       const saved = localStorage.getItem('cb_upvoted');
@@ -31,6 +51,13 @@ export default function App() {
       }
       const auth = localStorage.getItem('cb_authenticated');
       if (auth === 'true') setIsAuthenticated(true);
+
+      const params = new URLSearchParams(window.location.search);
+      const qIssueId = params.get('issueId');
+      if (qIssueId) {
+        setIssueId(qIssueId);
+        setScreen('issueDetail');
+      }
     } catch { /* ignore */ }
   }, []);
 
@@ -137,6 +164,7 @@ export default function App() {
         return (
           <div className={`absolute inset-0 ${screenAnim}`}>
             <HomeScreen
+              issues={issues}
               onNavigate={navigate}
               onTabChange={handleTabChange}
               activeTab={activeTab}
@@ -150,6 +178,7 @@ export default function App() {
           <div className={`absolute inset-0 z-10 ${screenAnim}`}>
             <IssueDetailScreen
               issueId={issueId}
+              issues={issues}
               onBack={handleBack}
               upvoted={upvoted}
               onUpvote={handleUpvote}
@@ -162,6 +191,7 @@ export default function App() {
             <ReportScreen
               onClose={handleBack}
               onNavigate={navigate}
+              onAddIssue={handleAddIssue}
             />
           </div>
         );
@@ -169,6 +199,7 @@ export default function App() {
         return (
           <div className={`absolute inset-0 z-10 ${screenAnim}`}>
             <AIScreen
+              issues={issues}
               onBack={handleBack}
               onNavigate={navigate}
             />
