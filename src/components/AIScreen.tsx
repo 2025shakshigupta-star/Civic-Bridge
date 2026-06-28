@@ -46,7 +46,12 @@ const QUICK_CHIPS = [
 ];
 
 const callGeminiAI = async (userMessage: string, issues: Issue[]) => {
-  const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AQ.Ab8RN6JnwVsz_QNHQdCOeRUZEGCsdWO8fDfD7z8UaV75l5mBpg";
+  const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+
+  if (!GEMINI_API_KEY) {
+    console.error("Gemini API Error: VITE_GEMINI_API_KEY environment variable is not defined.");
+    throw new Error("Gemini API Key is missing. Please add VITE_GEMINI_API_KEY to your .env file or Vercel settings.");
+  }
 
   const issuesContext = issues.map((issue, idx) => 
     `${idx + 1}. ${issue.title} — ${issue.complaints} complaints, ${issue.days} days, ${issue.severity}`
