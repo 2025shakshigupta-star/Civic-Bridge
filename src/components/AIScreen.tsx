@@ -45,12 +45,12 @@ const QUICK_CHIPS = [
   'Which issues affect school routes?',
 ];
 
-const callGeminiAI = async (userMessage: string, issues: Issue[]) => {
-  const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const callOpenAI = async (userMessage: string, issues: Issue[]) => {
+  const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 
-  if (!GEMINI_API_KEY) {
-    console.error("Gemini API Error: VITE_GEMINI_API_KEY environment variable is not defined.");
-    throw new Error("Gemini API Key is missing. Please add VITE_GEMINI_API_KEY to your .env file or Vercel settings.");
+  if (!OPENAI_API_KEY) {
+    console.error("OpenAI API Error: VITE_OPENAI_API_KEY environment variable is not defined.");
+    throw new Error("OpenAI API Key is missing. Please add VITE_OPENAI_API_KEY to your .env file or Vercel settings.");
   }
 
   const issuesContext = issues.map((issue, idx) => 
@@ -58,27 +58,28 @@ const callGeminiAI = async (userMessage: string, issues: Issue[]) => {
   ).join('\n');
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+    "https://api.openai.com/v1/chat/completions",
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${OPENAI_API_KEY}`
+      },
       body: JSON.stringify({
-        contents: [
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are the AI assistant for CivicBridge, a civic road issue reporting app in Mumbai India.
+
+Current issues data:
+${issuesContext}
+
+Reply in 3-4 lines max. Be specific with numbers.`
+          },
           {
             role: "user",
-            parts: [
-              {
-                text: `You are the AI assistant for CivicBridge,
-                a civic road issue reporting app in Mumbai India.
-
-                Current issues data:
-                ${issuesContext}
-
-                User asked: ${userMessage}
-
-                Reply in 3-4 lines max. Be specific with numbers.`
-              }
-            ]
+            content: userMessage
           }
         ]
       })
@@ -87,13 +88,13 @@ const callGeminiAI = async (userMessage: string, issues: Issue[]) => {
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({}));
-    console.error("Gemini API Request Failed:", {
+    console.error("OpenAI API Request Failed:", {
       status: response.status,
       statusText: response.statusText,
       error: errorBody.error || errorBody,
     });
     throw new Error(
-      `Gemini API Error (Status ${response.status}): ${
+      `OpenAI API Error (Status ${response.status}): ${
         errorBody.error?.message || "Unknown error"
       }`
     );
@@ -101,11 +102,11 @@ const callGeminiAI = async (userMessage: string, issues: Issue[]) => {
 
   const data = await response.json();
 
-  if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
-    return data.candidates[0].content.parts[0].text;
+  if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+    return data.choices[0].message.content;
   } else {
-    console.error("Gemini API Response Format Error. Decoded response:", data);
-    throw new Error("Invalid response format from Gemini API");
+    console.error("OpenAI API Response Format Error. Decoded response:", data);
+    throw new Error("Invalid response format from OpenAI API");
   }
 };
 
@@ -135,7 +136,7 @@ export default function AIScreen({ issues, onBack, onNavigate }: AIScreenProps) 
     setApiError(false);
 
     try {
-      const aiText = await callGeminiAI(userMsg, issues);
+      const aiText = await callOpenAI(userMsg, issues);
       setMessages((m) => [...m, { role: 'ai', text: aiText }]);
     } catch (err: any) {
       console.error("AI Assistant Error caught in sendMessage flow:", err);
