@@ -46,7 +46,7 @@ const QUICK_CHIPS = [
 ];
 
 const callGeminiAI = async (userMessage: string, issues: Issue[]) => {
-  const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyD0dbPyq74tDPTQ1ky-xK8hTla6OBhLiLA";
+  const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AQ.Ab8RN6JnwVsz_QNHQdCOeRUZEGCsdWO8fDfD7z8UaV75l5mBpg";
 
   const issuesContext = issues.map((issue, idx) => 
     `${idx + 1}. ${issue.title} — ${issue.complaints} complaints, ${issue.days} days, ${issue.severity}`
