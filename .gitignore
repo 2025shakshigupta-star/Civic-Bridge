@@ -22,5 +22,4 @@ dist-ssr
 *.sw?
 .env
 .npmrc
-.env
 .env.local
