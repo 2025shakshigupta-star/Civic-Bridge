@@ -350,4 +350,4 @@ export default function AIScreen({ issues, onBack, onNavigate }: AIScreenProps) 
     </div>
   );
 }
-}
+
